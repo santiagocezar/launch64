@@ -10,6 +10,7 @@ import json
 
 from buildpage import Builder
 from clonepage import CloneRepo
+from patchespage import Patches
 from config import repo_path, repo_exists
 
 class App(Gtk.Application):
@@ -23,14 +24,57 @@ class App(Gtk.Application):
     def __init__(self) -> None:
         super().__init__(application_id='net.svcezar.Launch64')
         self.connect('activate', self.on_activate)
+
+    def on_activate(self, app):
+        self.window = Gtk.ApplicationWindow(application=app)
+        self.window.set_default_size(400, 500)
+        self.header = Gtk.HeaderBar()
+        self.header.set_show_close_button(True)
+        #self.header.set_title('Launch64')
+        self.window.set_titlebar(self.header)
+        
+        self.build_btn = Gtk.Button(label='Build')
+        self.play_btn: Gtk.Button = Gtk.Button.new_from_icon_name('media-playback-start-symbolic', Gtk.IconSize.BUTTON)
+        self.play_btn.get_style_context().add_class('suggested-action')
+        self.play_btn.set_label('Play')
+        self.play_btn.connect('clicked', self.play_stop)
+        btn_group = Gtk.ButtonBox(orientation=Gtk.Orientation.HORIZONTAL)
+        btn_group.set_layout(Gtk.ButtonBoxStyle.EXPAND)
+        btn_group.add(self.build_btn)
+        btn_group.add(self.play_btn)
+        self.header.add(btn_group)
+
+        stack = Gtk.Stack()
+        stack.set_transition_type(Gtk.StackTransitionType.SLIDE_LEFT_RIGHT)
+
+        clone = CloneRepo(self.window)
+        clone.connect('loaded', self.on_clone_loaded)
+
+        stack.add_titled(clone, 'clone', 'Open repository')
+
+        stack_switcher = Gtk.StackSwitcher()
+        stack_switcher.set_stack(stack)
+        self.header.set_custom_title(stack_switcher)
+
+        if not repo_exists:
+            self.play_btn.set_sensitive(False)
+            self.build_btn.set_sensitive(False)
+            stack_switcher.set_sensitive(False)
+        
+        self.builder = Builder(self.window)
+        self.build_btn.connect('clicked', self.build)
+
+        stack.add_titled(self.builder, 'builder', 'Build settings')
+        stack.add_titled(Patches(self.window), 'patches', 'Patch Manager')
+        
+        self.window.add(stack)
+
+        self.window.show_all()
+        
     def on_clone_loaded(self, clone: CloneRepo):
-        self.window.remove(widget=clone)
         self.play_btn.set_sensitive(True)
         self.build_btn.set_sensitive(True)
-        self.builder = Builder(self.window)
-        self.build_btn.connect('clicked', self.builder.build)
-        self.window.add(self.builder)
-        self.builder.show_all()
+        self.window.get_titlebar().get_custom_title().set_sensitive(True)
 
     def run_sm64(self):
         def _game_thread(game, on_exit):
@@ -72,38 +116,5 @@ class App(Gtk.Application):
         self.build_btn.set_label('Build')
         self.build_btn.get_style_context().remove_class('destructive-action')
         
-
-    def on_activate(self, app):
-        self.window = Gtk.ApplicationWindow(application=app)
-        self.window.set_default_size(400, 500)
-        self.header = Gtk.HeaderBar()
-        self.header.set_show_close_button(True)
-        self.header.set_title('Launch64')
-        self.window.set_titlebar(self.header)
-        
-        self.build_btn = Gtk.Button(label='Build')
-        self.play_btn: Gtk.Button = Gtk.Button.new_from_icon_name('media-playback-start-symbolic', Gtk.IconSize.BUTTON)
-        self.play_btn.get_style_context().add_class('suggested-action')
-        self.play_btn.set_label('Play')
-        self.play_btn.connect('clicked', self.play_stop)
-        btn_group = Gtk.ButtonBox(orientation=Gtk.Orientation.HORIZONTAL)
-        btn_group.set_layout(Gtk.ButtonBoxStyle.EXPAND)
-        btn_group.add(self.build_btn)
-        btn_group.add(self.play_btn)
-        self.header.add(btn_group)
-
-        clone = CloneRepo(self.window)
-        clone.connect('loaded', self.on_clone_loaded)
-
-        if not repo_exists:
-            self.play_btn.set_sensitive(False)
-            self.build_btn.set_sensitive(False)
-            self.window.add(clone)
-        else:
-            self.builder = Builder(self.window)
-            self.build_btn.connect('clicked', self.build)
-            self.window.add(self.builder)
-
-        self.window.show_all()
         
 App().run(None)

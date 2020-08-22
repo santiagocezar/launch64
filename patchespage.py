@@ -5,31 +5,25 @@ import pygit2 as git
 from shutil import move
 import os
 
-class CloneRepo(Gtk.Box):
+class Patches(Gtk.Box):
     window: Gtk.ApplicationWindow = None
     def __init__(self, window):
         super().__init__(orientation=Gtk.Orientation.VERTICAL, spacing=8)
         self.window = window
 
-        self.set_halign(Gtk.Align.CENTER)
-        self.set_valign(Gtk.Align.CENTER)
-
-        logo: Gtk.Image = Gtk.Image.new_from_file('logo.svg')
-
-        clone_btn = Gtk.Button.new_from_icon_name('folder-download-symbolic', Gtk.IconSize.BUTTON)
-        clone_btn.set_label('Clone sm64ex')
+        clone_btn = Gtk.Button.new_from_icon_name('document-open-symbolic', Gtk.IconSize.BUTTON)
+        clone_btn.set_label('Import .patch file...')
         import_btn = Gtk.Button.new_from_icon_name('folder-open-symbolic', Gtk.IconSize.BUTTON)
-        import_btn.set_label('Import folder...')
+        import_btn.set_label('Import folder patch...')
 
         import_btn.connect('clicked', self.import_folder)
 
-        opts = Gtk.ButtonBox(orientation=Gtk.Orientation.VERTICAL)
+        opts = Gtk.ButtonBox(orientation=Gtk.Orientation.HORIZONTAL)
         opts.set_spacing(8)
         opts.set_layout(layout_style=Gtk.ButtonBoxStyle.CENTER)
         opts.add(clone_btn)
         opts.add(import_btn)
 
-        self.add(logo)
         self.add(opts)
 
     def is_sm64ex(self, src_path) -> bool:
@@ -72,7 +66,3 @@ class CloneRepo(Gtk.Box):
                 dialog.destroy()
         elif res == Gtk.ResponseType.CANCEL:
             file_chooser.destroy()
-    
-    @GObject.Signal
-    def loaded(self):
-        pass
