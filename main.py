@@ -1,8 +1,9 @@
+#!/bin/env python
 import gi
 gi.require_version("Gtk", "3.0")
 gi.require_version('Vte', '2.91')
 
-from gi.repository import Gtk
+from gi.repository import Gtk, GLib
 import os
 from threading import Thread
 import subprocess as sproc
@@ -81,7 +82,7 @@ class App(Gtk.Application):
             self.game = sproc.Popen(os.path.join(repo_path,'build/us_pc/sm64.us.f3dex2e'))
             self.game.wait()
             self.game = None
-            on_exit()
+            GLib.idle_add(on_exit)
             return
         
         thread = Thread(target=_game_thread, args=(self.game, self.on_game_exit))

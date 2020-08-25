@@ -169,7 +169,7 @@ class Builder(Gtk.Box):
             make.wait()
             sleep(1) # somehow switching a button style class quickly crashes Gtk 
             make = None
-            callback()
+            GLib.idle_add(callback)
             return
         
         thread = Thread(target=_build_thread, args=(self.make, callback))

@@ -1,15 +1,48 @@
 
-from config import repo_path
+from os import path
+from config import *
 from gi.repository import Gtk, GObject
-import pygit2 as git
-from shutil import move
 import os
+
+class Patch:
+    file: str
+    name: str
+    def __init__(self, file, name):
+        self.file = file
+        self.name = name
 
 class Patches(Gtk.Box):
     window: Gtk.ApplicationWindow = None
+
+    patch_list = [] 
+
+    def load_patches(self):
+        if not os.path.exists(f'{data_path}/patches'):
+            os.mkdir(f'{data_path}/patches')
+
+        files = os.listdir(f'{data_path}/patches')
+        for p in files:
+            path = f'{data_path}/patches/{p}'
+            with open(path) as f:
+                name = p
+                first = f.readline()
+                if first.startswith('name:'):
+                    name = first[5:-1]
+                self.patch_list.append(Patch(path, name))
+        
+        for p in self.patch_list:
+            print(p.name, p.file)
+                    
+
     def __init__(self, window):
         super().__init__(orientation=Gtk.Orientation.VERTICAL, spacing=8)
+
+        self.load_patches()
+        
         self.window = window
+        self.set_property('margin', 16)
+        self.set_size_request(width=400, height=400)
+        self.set_halign(Gtk.Align.CENTER)
 
         clone_btn = Gtk.Button.new_from_icon_name('document-open-symbolic', Gtk.IconSize.BUTTON)
         clone_btn.set_label('Import .patch file...')
@@ -25,6 +58,34 @@ class Patches(Gtk.Box):
         opts.add(import_btn)
 
         self.add(opts)
+
+        installed_title = Gtk.Label(label='')
+        installed_title.set_markup('<big><b>Installed Patches</b></big>')
+
+        self.add(installed_title)
+
+        installed_patches = Gtk.ListBox()
+        installed_patches.get_style_context().add_class('frame')
+        installed_patches.set_selection_mode(Gtk.SelectionMode.NONE)
+
+
+        for patch in self.patch_list:
+            lbr = Gtk.ListBoxRow()
+            row = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL)
+            row.set_property('margin', 8)
+            name = Gtk.Label(label=patch.name)
+            name.set_xalign(xalign=0)
+            row.pack_start(name, True, True, 0)
+            row.add(Gtk.Switch())
+            lbr.add(row)
+            lbr.set_activatable(False)
+            installed_patches.add(lbr)
+
+        installed_patches_scroll = Gtk.ScrolledWindow()
+        installed_patches_scroll.add(installed_patches)
+
+        self.pack_end(installed_patches_scroll, True, True, 0)
+
 
     def is_sm64ex(self, src_path) -> bool:
         if git.discover_repository(src_path) is None:
