@@ -3,8 +3,10 @@ from os import path
 from config import *
 from gi.repository import Gtk, GObject
 import os
+from threading import Thread
+import subprocess as sproc
 
-class Patch:
+class PatchesPage:
     file: str
     name: str
     def __init__(self, file, name):
@@ -15,25 +17,7 @@ class Patches(Gtk.Box):
     window: Gtk.ApplicationWindow = None
 
     patch_list = [] 
-
-    def load_patches(self):
-        if not os.path.exists(f'{data_path}/patches'):
-            os.mkdir(f'{data_path}/patches')
-
-        files = os.listdir(f'{data_path}/patches')
-        for p in files:
-            path = f'{data_path}/patches/{p}'
-            with open(path) as f:
-                name = p
-                first = f.readline()
-                if first.startswith('name:'):
-                    name = first[5:-1]
-                self.patch_list.append(Patch(path, name))
-        
-        for p in self.patch_list:
-            print(p.name, p.file)
-                    
-
+    
     def __init__(self, window):
         super().__init__(orientation=Gtk.Orientation.VERTICAL, spacing=8)
 
@@ -65,35 +49,74 @@ class Patches(Gtk.Box):
         self.add(installed_title)
 
         installed_patches = Gtk.ListBox()
-        installed_patches.get_style_context().add_class('frame')
         installed_patches.set_selection_mode(Gtk.SelectionMode.NONE)
 
-
+        first = True
         for patch in self.patch_list:
+            if not first:
+                installed_patches.add(Gtk.Separator())
+            first = False
+
             lbr = Gtk.ListBoxRow()
             row = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL)
             row.set_property('margin', 8)
             name = Gtk.Label(label=patch.name)
             name.set_xalign(xalign=0)
-            row.pack_start(name, True, True, 0)
-            row.add(Gtk.Switch())
+            row.pack_start(name, False, False, 0)
+            spin = Gtk.Spinner()
+            switch = Gtk.Switch()
+            switch.connect('state-set', self.set_patch_state, patch, spin)
+            row.pack_end(switch, False, False, 0)
+            row.pack_end(spin, False, False, 8)
+            #spin.start()
             lbr.add(row)
             lbr.set_activatable(False)
             installed_patches.add(lbr)
 
         installed_patches_scroll = Gtk.ScrolledWindow()
-        installed_patches_scroll.add(installed_patches)
+        installed_patches_vport = Gtk.Viewport()
+        installed_patches_scroll.get_style_context().add_class('frame')
+        installed_patches_vport.get_style_context().add_class('frame')
+        installed_patches_vport.add(installed_patches)
+        installed_patches_scroll.add(installed_patches_vport)
 
         self.pack_end(installed_patches_scroll, True, True, 0)
 
+    def load_patches(self):
+        if not os.path.exists(f'{data_path}/patches'):
+            os.mkdir(f'{data_path}/patches')
 
-    def is_sm64ex(self, src_path) -> bool:
-        if git.discover_repository(src_path) is None:
-            return False
-        if not os.path.exists(os.path.join(src_path, 'Makefile')):
-            return False
+        files = os.listdir(f'{data_path}/patches')
+        for p in files:
+            path = f'{data_path}/patches/{p}'
+            with open(path) as f:
+                name = p
+                first = f.readline()
+                if first.startswith('name:'):
+                    name = first[5:-1]
+                self.patch_list.append(PatchesPage(path, name))
+    
+    def patch_apply(self, patch: PatchesPage, reverse: bool, spinner: Gtk.Spinner, callback, *args):
+        cmd = 'git apply -p1'
+        if reverse:
+            cmd += ' -R'
+        def _build_thread(make, callback):
+            make = sproc.Popen(['/bin/make'] + args, cwd=repo_path)
+            make.wait()
+            GLib.idle_add(callback)
+            return
+        
+        thread = Thread(target=_build_thread, args=(self.make, callback))
+        thread.start()
+        return thread
 
-        return True
+    def finished_patch(self, spinner: Gtk.Spinner):
+        pass
+
+    def set_patch_state(self, _switch, state: bool, patch: PatchesPage, spinner: Gtk.Spinner):
+        print(state, patch.name)
+        self.patch_apply(patch, not state, spinner)
+        spinner.start()
 
     def import_folder(self, btn):
         file_chooser = Gtk.FileChooserDialog(

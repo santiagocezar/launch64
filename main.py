@@ -9,9 +9,10 @@ from threading import Thread
 import subprocess as sproc
 import json
 
-from buildpage import Builder
+from flags_page import FlagsPage
 from clonepage import CloneRepo
-from patchespage import Patches
+from patches_page import Patches
+import builder
 from config import repo_path, repo_exists
 
 class App(Gtk.Application):
@@ -20,7 +21,8 @@ class App(Gtk.Application):
     build_btn: Gtk.Button = None
     play_btn: Gtk.Button = None
     game: sproc.Popen = None
-    builder: Builder = None
+    flags: FlagsPage = None
+    patcher: Patches = None
 
     def __init__(self) -> None:
         super().__init__(application_id='net.svcezar.Launch64')
@@ -49,7 +51,7 @@ class App(Gtk.Application):
         stack.set_transition_type(Gtk.StackTransitionType.SLIDE_LEFT_RIGHT)
 
         clone = CloneRepo(self.window)
-        clone.connect('loaded', self.on_clone_loaded)
+        clone.connect('loaded', self.on_repo_imported)
 
         stack.add_titled(clone, 'clone', 'Open repository')
 
@@ -57,25 +59,27 @@ class App(Gtk.Application):
         stack_switcher.set_stack(stack)
         self.header.set_custom_title(stack_switcher)
 
+        self.flags = FlagsPage(self.window)
+        self.build_btn.connect('clicked', self.build)
+
+        stack.add_titled(self.flags, 'builder', 'Build settings')
+        self.patcher = Patches(self.window)
+        stack.add_titled(self.patcher, 'patches', 'Patch Manager')
+        
         if not repo_exists:
             self.play_btn.set_sensitive(False)
             self.build_btn.set_sensitive(False)
             stack_switcher.set_sensitive(False)
-        
-        self.builder = Builder(self.window)
-        self.build_btn.connect('clicked', self.build)
-
-        stack.add_titled(self.builder, 'builder', 'Build settings')
-        stack.add_titled(Patches(self.window), 'patches', 'Patch Manager')
-        
+    
         self.window.add(stack)
 
         self.window.show_all()
         
-    def on_clone_loaded(self, clone: CloneRepo):
+    def on_repo_imported(self, clone: CloneRepo):
         self.play_btn.set_sensitive(True)
         self.build_btn.set_sensitive(True)
         self.window.get_titlebar().get_custom_title().set_sensitive(True)
+        self.patcher.load_repo()
 
     def run_sm64(self):
         def _game_thread(game, on_exit):
@@ -106,16 +110,17 @@ class App(Gtk.Application):
             self.run_sm64()
 
     def build(self, _btn):
-        if self.builder.is_building():
-            self.builder.build_cancel()
+        if builder.is_building():
+            builder.build_cancel()
         else:
             self.build_btn.set_label('Cancel')
             self.build_btn.get_style_context().add_class('destructive-action')
-            self.builder.build(self.on_build_stop)
+            builder.build(GLib.idle_add, self.on_build_stop)
 
     def on_build_stop(self):
         self.build_btn.set_label('Build')
         self.build_btn.get_style_context().remove_class('destructive-action')
+        self.build_btn.add(Gtk.Spinner())
         
         
 App().run(None)
