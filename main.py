@@ -11,7 +11,7 @@ import json
 
 from flags_page import FlagsPage
 from clonepage import CloneRepo
-from patches_page import Patches
+from patches_page import PatchesPage
 import builder
 from config import repo_path, repo_exists
 
@@ -22,7 +22,7 @@ class App(Gtk.Application):
     play_btn: Gtk.Button = None
     game: sproc.Popen = None
     flags: FlagsPage = None
-    patcher: Patches = None
+    patcher: PatchesPage = None
 
     def __init__(self) -> None:
         super().__init__(application_id='net.svcezar.Launch64')
@@ -63,7 +63,7 @@ class App(Gtk.Application):
         self.build_btn.connect('clicked', self.build)
 
         stack.add_titled(self.flags, 'builder', 'Build settings')
-        self.patcher = Patches(self.window)
+        self.patcher = PatchesPage(self.window)
         stack.add_titled(self.patcher, 'patches', 'Patch Manager')
         
         if not repo_exists:

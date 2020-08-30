@@ -5,15 +5,16 @@ from gi.repository import Gtk, GObject
 import os
 from threading import Thread
 import subprocess as sproc
+import builder
 
-class PatchesPage:
+class Patch:
     file: str
     name: str
     def __init__(self, file, name):
         self.file = file
         self.name = name
 
-class Patches(Gtk.Box):
+class PatchesPage(Gtk.Box):
     window: Gtk.ApplicationWindow = None
 
     patch_list = [] 
@@ -82,6 +83,9 @@ class Patches(Gtk.Box):
 
         self.pack_end(installed_patches_scroll, True, True, 0)
 
+    def set_patch_state(self, _switch, state: bool, patch: Patch, spinner: Gtk.Spinner):
+        builder.set_patch(patch.file, state)
+
     def load_patches(self):
         if not os.path.exists(f'{data_path}/patches'):
             os.mkdir(f'{data_path}/patches')
@@ -94,30 +98,8 @@ class Patches(Gtk.Box):
                 first = f.readline()
                 if first.startswith('name:'):
                     name = first[5:-1]
-                self.patch_list.append(PatchesPage(path, name))
+                self.patch_list.append(Patch(path, name))
     
-    def patch_apply(self, patch: PatchesPage, reverse: bool, spinner: Gtk.Spinner, callback, *args):
-        cmd = 'git apply -p1'
-        if reverse:
-            cmd += ' -R'
-        def _build_thread(make, callback):
-            make = sproc.Popen(['/bin/make'] + args, cwd=repo_path)
-            make.wait()
-            GLib.idle_add(callback)
-            return
-        
-        thread = Thread(target=_build_thread, args=(self.make, callback))
-        thread.start()
-        return thread
-
-    def finished_patch(self, spinner: Gtk.Spinner):
-        pass
-
-    def set_patch_state(self, _switch, state: bool, patch: PatchesPage, spinner: Gtk.Spinner):
-        print(state, patch.name)
-        self.patch_apply(patch, not state, spinner)
-        spinner.start()
-
     def import_folder(self, btn):
         file_chooser = Gtk.FileChooserDialog(
             title='Import sm64ex repository', 
