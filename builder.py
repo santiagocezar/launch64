@@ -1,5 +1,6 @@
 from os import stat
 from distutils.dir_util import copy_tree
+from shutil import copy2
 from threading import ThreadError
 from config import *
 
@@ -68,25 +69,30 @@ def build(callback, *args, **kwargs):
         
         section = lambda msg: f'\033[1m[\033[96m{msg}\033[0m\033[1m]\033[0m'
         error = lambda msg: f'\033[1m\033[91m{msg}\033[0m'
+        ok = lambda msg: f'\033[1m\033[92m{msg}\033[0m'
 
         if needs_rebuild:
             print(section('Restoring repository...'))
             reset = sproc.Popen(['git', 'reset', '--hard'], cwd=repo_path)
-            reset = sproc.Popen(['git', 'clean', '-df'], cwd=repo_path)
+            reset = sproc.Popen(['git', 'clean', '-fdx'], cwd=repo_path)
             reset.wait()
+
+            print(section('Copying base ROM...'))
+            copy2(data_path + f'''/baserom.{get_raw_flag('VERSION')}.z64''', repo_path + f'''/baserom.{get_raw_flag('VERSION')}.z64''')
+
+            print(section('Applying source overlay...'))
+            for file in os.listdir(f'{data_path}/overlay'):
+                copy_tree(f'{data_path}/overlay/{file}', f'{repo_path}/{file}')
 
             print(section('Applying patches...'))
             for patch, enabled in enabled_patches.items():
                 if enabled:
-                    git_apply = sproc.Popen(['git', 'apply', '-p1', patch], cwd=repo_path)
+                    git_apply = sproc.Popen(['git', 'apply', '-p1', '--verbose', patch], cwd=repo_path)
                     result = git_apply.wait()
                     if result != 0:
                         print(error(f'Failed to apply patch \"{patch}\" (exit code {result})'))
                         callback(*args, **kwargs)
                         return
-
-                        
-
                     
         print(section('Compiling...'))
         make_args = []
@@ -104,9 +110,11 @@ def build(callback, *args, **kwargs):
             return
 
 
-        print(section('Copying post-build patches...'))
-        for file in os.listdir(f'{data_path}/build_dir'):
-            copy_tree(f'{data_path}/build_dir/{file}', f'{repo_path}/build/{get_raw_flag("VERSION")}_pc/{file}')
+        print(section('Applying post-build overlay...'))
+        for file in os.listdir(f'{data_path}/post_overlay'):
+            copy_tree(f'{data_path}/post_overlay/{file}', f'{repo_path}/build/{get_raw_flag("VERSION")}_pc/{file}')
+
+        print(ok('All done!'))
 
         callback(*args, **kwargs)
         return

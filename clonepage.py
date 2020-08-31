@@ -16,21 +16,13 @@ class CloneRepo(Gtk.Box):
 
         logo: Gtk.Image = Gtk.Image.new_from_file('logo.svg')
 
-        clone_btn = Gtk.Button.new_from_icon_name('folder-download-symbolic', Gtk.IconSize.BUTTON)
-        clone_btn.set_label('Clone sm64ex')
         import_btn = Gtk.Button.new_from_icon_name('folder-open-symbolic', Gtk.IconSize.BUTTON)
         import_btn.set_label('Import folder...')
 
         import_btn.connect('clicked', self.import_folder)
 
-        opts = Gtk.ButtonBox(orientation=Gtk.Orientation.VERTICAL)
-        opts.set_spacing(8)
-        opts.set_layout(layout_style=Gtk.ButtonBoxStyle.CENTER)
-        opts.add(clone_btn)
-        opts.add(import_btn)
-
         self.add(logo)
-        self.add(opts)
+        self.add(import_btn)
 
     def is_sm64ex(self, src_path) -> bool:
         if git.discover_repository(src_path) is None:

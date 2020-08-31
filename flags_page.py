@@ -94,6 +94,18 @@ class FlagsPage(Gtk.Box):
             row.add(switch)
             build_opts.add(row)
         
+
+        build_opts.add(Gtk.Separator())
+
+        pbo_title = Gtk.Label(label='')
+        pbo_title.set_markup('<big><b>Post-build overlay</b></big>')
+        build_opts.add(pbo_title)
+        pbo_open = Gtk.Button.new_from_icon_name('folder-open-symbolic', Gtk.IconSize.BUTTON)
+        pbo_open.set_label('Open PBO directory')
+        pbo_open.connect('clicked', lambda _: sproc.call(['xdg-open', f'{data_path}/post_overlay']))
+        build_opts.add(pbo_open)
+
+
         build_opts_scroll = Gtk.ScrolledWindow()
         build_opts_scroll.add(build_opts)
 
@@ -131,7 +143,7 @@ class FlagsPage(Gtk.Box):
                 
 
             if verified:
-                copy(src=rom_path, dst=repo_path + f'''/baserom.{builder.get_raw_flag('VERSION')}.z64''')
+                copy(src=rom_path, dst=data_path + f'''/baserom.{builder.get_raw_flag('VERSION')}.z64''')
             else:
                 dialog = Gtk.MessageDialog(
                     transient_for=self.window,

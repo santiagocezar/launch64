@@ -31,23 +31,23 @@ class PatchesPage(Gtk.Box):
 
         clone_btn = Gtk.Button.new_from_icon_name('document-open-symbolic', Gtk.IconSize.BUTTON)
         clone_btn.set_label('Import .patch file...')
-        import_btn = Gtk.Button.new_from_icon_name('folder-open-symbolic', Gtk.IconSize.BUTTON)
-        import_btn.set_label('Import folder patch...')
+        overlay_open = Gtk.Button.new_from_icon_name('folder-open-symbolic', Gtk.IconSize.BUTTON)
+        overlay_open.set_label('Open source overlay')
 
-        import_btn.connect('clicked', self.import_folder)
+        overlay_open.connect('clicked', lambda _: sproc.call(['xdg-open', f'{data_path}/overlay']))
 
         opts = Gtk.ButtonBox(orientation=Gtk.Orientation.HORIZONTAL)
         opts.set_spacing(8)
-        opts.set_layout(layout_style=Gtk.ButtonBoxStyle.CENTER)
+        opts.set_layout(layout_style=Gtk.ButtonBoxStyle.EXPAND)
         opts.add(clone_btn)
-        opts.add(import_btn)
+        opts.add(overlay_open)
 
-        self.add(opts)
 
         installed_title = Gtk.Label(label='')
         installed_title.set_markup('<big><b>Installed Patches</b></big>')
 
         self.add(installed_title)
+        self.add(opts)
 
         installed_patches = Gtk.ListBox()
         installed_patches.set_selection_mode(Gtk.SelectionMode.NONE)
